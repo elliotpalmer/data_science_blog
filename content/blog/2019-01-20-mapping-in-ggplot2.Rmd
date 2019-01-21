@@ -1,0 +1,53 @@
+---
+title: Mapping in ggplot2
+author: Elliot Palmer
+date: '2019-01-20'
+slug: mapping-in-ggplot2
+categories:
+  - visualization
+tags:
+  - ggplot2
+description: ''
+featured: ''
+featuredalt: ''
+featuredpath: ''
+linktitle: ''
+type: post
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+data("USArrests")
+
+state_name_to_abbrev <- data.frame(
+  abbrev = state.abb,
+  name = state.name
+)
+
+head(USArrests)
+```
+
+```{r}
+arrests <- USArrests %>% 
+  tibble::rownames_to_column(var = "name") %>% 
+  inner_join(state_name_to_abbrev) %>% 
+  select(name, abbrev, everything()) %>% 
+  mutate(name = tolower(name))
+```
+
+```{r}
+states <- map_data("state")
+
+states %>% 
+  inner_join(arrests, by = c("region" = "name")) %>% 
+  ggplot() + 
+  geom_polygon(aes(x = long, y = lat, fill = Murder , group = group), color = "white") + 
+  coord_fixed(1.3) +
+  guides(fill=FALSE) +
+  theme_void()# do this to leave off the color legend
+```
+

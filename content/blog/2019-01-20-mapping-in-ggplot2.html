@@ -1,0 +1,64 @@
+---
+title: Mapping in ggplot2
+author: Elliot Palmer
+date: '2019-01-20'
+slug: mapping-in-ggplot2
+categories:
+  - visualization
+tags:
+  - ggplot2
+description: ''
+featured: ''
+featuredalt: ''
+featuredpath: ''
+linktitle: ''
+type: post
+---
+
+
+
+<pre class="r"><code>library(ggplot2)
+library(dplyr)</code></pre>
+<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 3.4.4</code></pre>
+<pre><code>## 
+## Attaching package: &#39;dplyr&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:stats&#39;:
+## 
+##     filter, lag</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
+## 
+##     intersect, setdiff, setequal, union</code></pre>
+<pre class="r"><code>data(&quot;USArrests&quot;)
+
+state_name_to_abbrev &lt;- data.frame(
+  abbrev = state.abb,
+  name = state.name
+)
+
+head(USArrests)</code></pre>
+<pre><code>##            Murder Assault UrbanPop Rape
+## Alabama      13.2     236       58 21.2
+## Alaska       10.0     263       48 44.5
+## Arizona       8.1     294       80 31.0
+## Arkansas      8.8     190       50 19.5
+## California    9.0     276       91 40.6
+## Colorado      7.9     204       78 38.7</code></pre>
+<pre class="r"><code>arrests &lt;- USArrests %&gt;% 
+  tibble::rownames_to_column(var = &quot;name&quot;) %&gt;% 
+  inner_join(state_name_to_abbrev) %&gt;% 
+  select(name, abbrev, everything()) %&gt;% 
+  mutate(name = tolower(name))</code></pre>
+<pre><code>## Joining, by = &quot;name&quot;</code></pre>
+<pre><code>## Warning: Column `name` joining character vector and factor, coercing into
+## character vector</code></pre>
+<pre><code>## Warning: package &#39;bindrcpp&#39; was built under R version 3.4.4</code></pre>
+<pre class="r"><code>states &lt;- map_data(&quot;state&quot;)
+
+states %&gt;% 
+  inner_join(arrests, by = c(&quot;region&quot; = &quot;name&quot;)) %&gt;% 
+  ggplot() + 
+  geom_polygon(aes(x = long, y = lat, fill = Murder , group = group), color = &quot;white&quot;) + 
+  coord_fixed(1.3) +
+  guides(fill=FALSE) +
+  theme_void()# do this to leave off the color legend</code></pre>
+<p><img src="/blog/2019-01-20-mapping-in-ggplot2_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
