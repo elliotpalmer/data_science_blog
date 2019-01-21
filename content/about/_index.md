@@ -1,29 +1,32 @@
 +++
-title = "About Hugo"
-date = "2014-04-09"
+title = "About Elliot"
+date = "2019-01-20"
 +++
 
-Hugo is a static site engine written in Go.
+## Experience
 
+### Lbrands
 
-It makes use of a variety of open source projects including:
+**Manager, Data Science and Analytics**
 
-* [Cobra](https://github.com/spf13/cobra)
-* [Viper](https://github.com/spf13/viper)
-* [J Walter Weatherman](https://github.com/spf13/jWalterWeatherman)
-* [Cast](https://github.com/spf13/cast)
+* Bullet #1
+* Bullet #2
 
-Learn more and contribute on [GitHub](https://github.com/spf13).
+**Data Scientist, Data Science and Analytics**
 
-## Setup
+* Bullet #1
+* Bullet #2
 
-Some fun facts about [Hugo](http://gohugo.io/):
+**Business Analyst, Victoria's Secret Store Finance**
 
-* Built in [Go](http://golang.org/)
-* Loosely inspired by [Jekyll](http://jekyllrb.com/)
-* Primarily developed by [spf13](http://spf13.com/) on the train while commuting to and from Manhattan.
-* Coded in [Vim](http://vim.org) using [spf13-vim](http://vim.spf13.com/)
+**Senior Financial Analyst, Victoria's Secret Store Finance**
 
-Have questions or suggestions? Feel free to [open an issue on GitHub](https://github.com/spf13/hugo/issues/new) or [ask me on Twitter](https://twitter.com/spf13).
+**Finanacial Analyst, Victoria's Secret Store Finance**
 
-Thanks for reading!
+## Education
+
+### The Ohio State University
+
+**Degree:** BS in Business Administration, 2011    
+**Major:** Finance, Economics  
+**Minor:** Mathematics  
