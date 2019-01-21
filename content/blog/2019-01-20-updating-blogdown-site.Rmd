@@ -1,0 +1,58 @@
+---
+title: Updating Blogdown Site
+author: Elliot Palmer
+date: '2019-01-20'
+slug: updating-blogdown-site
+categories:
+  - blogging
+tags:
+  - blogdown
+description: ''
+featured: ''
+featuredalt: ''
+featuredpath: ''
+linktitle: ''
+type: post
+---
+
+# Updating Blogdown Site
+
+## Create Post with Blogdown Addin
+
+YAML Header at the top of the Post
+```
+---
+title: Updating Blogdown Site
+author: Elliot Palmer
+date: '2019-01-20'
+slug: updating-blogdown-site
+categories:
+  - blogging
+tags:
+  - blogdown
+description: ''
+featured: ''
+featuredalt: ''
+featuredpath: ''
+linktitle: ''
+type: post
+---
+```
+
+## Update Content
+
+```r
+blogdown::serve_site()
+```
+
+## Commit to Git and Push to Github
+
+```git
+git add .
+git commit -m "commit message, hopefully it's meaningful"
+git push -u origin master
+```
+
+This assumes you've setup your git repository and remotes correctly
+
+##

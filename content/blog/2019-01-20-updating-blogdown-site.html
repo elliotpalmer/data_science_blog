@@ -1,0 +1,56 @@
+---
+title: Updating Blogdown Site
+author: Elliot Palmer
+date: '2019-01-20'
+slug: updating-blogdown-site
+categories:
+  - blogging
+tags:
+  - blogdown
+description: ''
+featured: ''
+featuredalt: ''
+featuredpath: ''
+linktitle: ''
+type: post
+---
+
+
+
+<div id="updating-blogdown-site" class="section level1">
+<h1>Updating Blogdown Site</h1>
+<div id="create-post-with-blogdown-addin" class="section level2">
+<h2>Create Post with Blogdown Addin</h2>
+<p>YAML Header at the top of the Post</p>
+<pre><code>---
+title: Updating Blogdown Site
+author: Elliot Palmer
+date: &#39;2019-01-20&#39;
+slug: updating-blogdown-site
+categories:
+  - blogging
+tags:
+  - blogdown
+description: &#39;&#39;
+featured: &#39;&#39;
+featuredalt: &#39;&#39;
+featuredpath: &#39;&#39;
+linktitle: &#39;&#39;
+type: post
+---</code></pre>
+</div>
+<div id="update-content" class="section level2">
+<h2>Update Content</h2>
+<pre class="r"><code>blogdown::serve_site()</code></pre>
+</div>
+<div id="commit-to-git-and-push-to-github" class="section level2">
+<h2>Commit to Git and Push to Github</h2>
+<pre class="git"><code>git add .
+git commit -m &quot;commit message, hopefully it&#39;s meaningful&quot;
+git push -u origin master</code></pre>
+<p>This assumes you’ve setup your git repository and remotes correctly</p>
+</div>
+<div id="section" class="section level2">
+<h2></h2>
+</div>
+</div>
