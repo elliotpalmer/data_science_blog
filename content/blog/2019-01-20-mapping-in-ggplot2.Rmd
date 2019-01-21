@@ -51,3 +51,7 @@ states %>%
   theme_void()# do this to leave off the color legend
 ```
 
+```{r}
+GGally::ggpairs(select_if(arrests, is.numeric))
+```
+
