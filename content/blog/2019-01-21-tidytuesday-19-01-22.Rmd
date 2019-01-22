@@ -27,12 +27,13 @@ From Github Readme:
 
 ```{r setup, message=FALSE, warning=FALSE}
 library(tidyverse)
+library(maps)
 library(viridis)
 ```
 
 ## Read in Data
 
-```{r get-data, message=FALSE, warning=FALSE}
+```{r get-data, message=FALSE, warning=FALSE, cache=TRUE}
 # Setting the root in one place so that I don't have to necessarily repeat the path
 repo_root <- "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-01-22"
 
@@ -56,7 +57,7 @@ county_xref <- raw_data %>%
   select(fips, state, county_name) %>% 
   distinct() %>% 
   inner_join(state_name_to_abbrev, by = c("state" = "abbrev")) %>% 
-  inner_join(county.fips, by = "fips") %>% 
+  inner_join(maps::county.fips, by = "fips") %>% 
   tidyr::separate(polyname, c("state","county"), ",") %>% 
   select(-name)
 
@@ -90,12 +91,19 @@ prison_pop_clean <- prison_population %>%
 ```{r location-data}
 # State Data ----
 
+
 state_prison_pop <- prison_pop_clean %>% 
   group_by(year, state) %>% 
   filter(pop_category_group == "Total") %>% 
   summarise(population = sum(population, na.rm = TRUE),
             prison_population = sum(prison_population, na.rm = TRUE)) %>% 
   mutate(prison_pop_per1k = prison_population / (population / 1000))
+
+low_reporting_states <- state_prison_pop %>% 
+  group_by(state) %>% 
+  summarise(data_count = sum(prison_population > 0)) %>% 
+  filter(data_count < 24) %>% 
+  arrange(data_count)
 
 state_prison_pop_median <- state_prison_pop %>% 
   filter(!(state %in% low_reporting_states$state)) %>% 
@@ -174,18 +182,14 @@ prison_population %>%
        subtitle = "Prison Pop Reporting Covers 1983 to 2015",
        x = "Year",
        y = "Prison Population") +
-  scale_y_continuous(label = scales::comma)
+  scale_y_continuous(label = scales::comma) +
   theme_light()
 ```
 
 ### Some States have Spotty Reporting
 
 ```{r}
-low_reporting_states <- state_prison_pop %>% 
-  group_by(state) %>% 
-  summarise(data_count = sum(prison_population > 0)) %>% 
-  filter(data_count < 24) %>% 
-  arrange(data_count)
+low_reporting_states
 ```
 
 
@@ -223,7 +227,6 @@ filter_county_prison_pop_median <-
   ungroup() %>% 
   mutate(median_rate_ntile = ntile(median_rate, 1000)) %>% 
   filter(between(median_rate_ntile, 2,998)) #%>% 
-  top_n(300, median_rate)
 
 # All Counties
 counties %>% 

@@ -1,0 +1,281 @@
+---
+title: '#tidytuesday 19-01-22'
+author: Elliot Palmer
+date: '2019-01-21'
+slug: tidytuesday-19-01-22
+categories:
+  - tidytuesday
+tags: []
+description: ''
+featured: ''
+featuredalt: ''
+featuredpath: ''
+linktitle: ''
+type: post
+---
+
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p><a href="Link%20to%20Github%20Repo">https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-01-22</a></p>
+<p>From Github Readme:
+&gt;Data Info
+&gt;
+&gt;Data comes from <a href="https://github.com/vera-institute/incarceration_trends">The Vera Institute GitHub</a>. The raw dataset was &gt;taken from their GitHub - it is in a wide format and if you are keen on really flexing your data munging skills it is a &gt;worthy adversary! The truly raw data is seen &gt;<a href="https://raw.githubusercontent.com/vera-institute/incarceration_trends/master/incarceration_trends.csv">here</a>. My full code &gt;to reproduce the summary level datasets seen below can be found <a href="example_code.R">here</a>, you can adapt this minorly to get &gt;more data from the original wide dataset.</p>
+<div id="loading-libraries" class="section level2">
+<h2>Loading Libraries</h2>
+<pre class="r"><code>library(tidyverse)
+library(maps)
+library(viridis)</code></pre>
+</div>
+<div id="read-in-data" class="section level2">
+<h2>Read in Data</h2>
+<pre class="r"><code># Setting the root in one place so that I don&#39;t have to necessarily repeat the path
+repo_root &lt;- &quot;https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-01-22&quot;
+
+# This might take ~30s due to the volume of data
+raw_data &lt;- read_csv(glue::glue(&quot;{repo_root}/incarceration_trends.csv&quot;))
+pretrial_population &lt;- read_csv(glue::glue(&quot;{repo_root}/pretrial_population.csv&quot;))
+pretrial_summary &lt;- read_csv(glue::glue(&quot;{repo_root}/pretrial_summary.csv&quot;))
+prison_population &lt;- read_csv(glue::glue(&quot;{repo_root}/prison_population.csv&quot;))
+prison_summary &lt;- read_csv(glue::glue(&quot;{repo_root}/prison_summary.csv&quot;))</code></pre>
+</div>
+<div id="supplementary-data" class="section level2">
+<h2>Supplementary Data</h2>
+<pre class="r"><code>state_name_to_abbrev &lt;- data.frame(
+  abbrev = state.abb,
+  name = tolower(state.name)
+)
+
+county_xref &lt;- raw_data %&gt;% 
+  select(fips, state, county_name) %&gt;% 
+  distinct() %&gt;% 
+  inner_join(state_name_to_abbrev, by = c(&quot;state&quot; = &quot;abbrev&quot;)) %&gt;% 
+  inner_join(maps::county.fips, by = &quot;fips&quot;) %&gt;% 
+  tidyr::separate(polyname, c(&quot;state&quot;,&quot;county&quot;), &quot;,&quot;) %&gt;% 
+  select(-name)</code></pre>
+<pre><code>## Warning: Column `state`/`abbrev` joining character vector and factor,
+## coercing into character vector</code></pre>
+<pre class="r"><code># Mapping Data
+states &lt;- map_data(&quot;state&quot;) %&gt;% 
+  inner_join(state_name_to_abbrev, by = c(&quot;region&quot; = &quot;name&quot;))</code></pre>
+<pre><code>## Warning: Column `region`/`name` joining character vector and factor,
+## coercing into character vector</code></pre>
+<pre class="r"><code>counties &lt;- map_data(&quot;county&quot;) %&gt;% 
+  inner_join(state_name_to_abbrev, by = c(&quot;region&quot; = &quot;name&quot;)) %&gt;% 
+  left_join(county_xref, by = c(&quot;region&quot; = &quot;state&quot;, &quot;subregion&quot; = &quot;county&quot;))</code></pre>
+<pre><code>## Warning: Column `region`/`name` joining character vector and factor,
+## coercing into character vector</code></pre>
+</div>
+<div id="data-munging" class="section level2">
+<h2>Data Munging</h2>
+<pre class="r"><code>prison_population &lt;-
+  prison_population %&gt;% 
+  mutate(pop_category_group = case_when(pop_category %in% c(&quot;Asian&quot;, &quot;Black&quot;, &quot;Latino&quot;, &quot;Native American&quot;, &quot;White&quot;, &quot;Other&quot;) ~ &quot;Ethnicity&quot;,
+                                        pop_category %in% c(&quot;Female&quot;, &quot;Male&quot;) ~ &quot;Gender&quot;,
+                                        pop_category == &quot;Total&quot; ~ &quot;Total&quot;,
+                                        TRUE ~ &quot;Other&quot;)
+         )</code></pre>
+<pre><code>## Warning: package &#39;bindrcpp&#39; was built under R version 3.4.4</code></pre>
+<pre class="r"><code>prison_pop_clean &lt;- prison_population %&gt;% 
+  filter(between(year, 1990, 2015))</code></pre>
+<pre class="r"><code># State Data ----
+
+
+state_prison_pop &lt;- prison_pop_clean %&gt;% 
+  group_by(year, state) %&gt;% 
+  filter(pop_category_group == &quot;Total&quot;) %&gt;% 
+  summarise(population = sum(population, na.rm = TRUE),
+            prison_population = sum(prison_population, na.rm = TRUE)) %&gt;% 
+  mutate(prison_pop_per1k = prison_population / (population / 1000))
+
+low_reporting_states &lt;- state_prison_pop %&gt;% 
+  group_by(state) %&gt;% 
+  summarise(data_count = sum(prison_population &gt; 0)) %&gt;% 
+  filter(data_count &lt; 24) %&gt;% 
+  arrange(data_count)
+
+state_prison_pop_median &lt;- state_prison_pop %&gt;% 
+  filter(!(state %in% low_reporting_states$state)) %&gt;% 
+  group_by(state) %&gt;% 
+  summarise(median_rate = median(prison_pop_per1k)) 
+
+# County Data ----
+county_prison_pop &lt;- prison_pop_clean %&gt;% 
+  group_by(year, state, county_name) %&gt;% 
+  filter(pop_category_group == &quot;Total&quot;) %&gt;% 
+  summarise(population = sum(population, na.rm = TRUE),
+            prison_population = sum(prison_population, na.rm = TRUE)) %&gt;% 
+  mutate(prison_pop_per1k = prison_population / (population / 1000))
+
+county_prison_pop_median &lt;- county_prison_pop %&gt;% 
+  filter(!(state %in% low_reporting_states$state)) %&gt;% 
+  group_by(state, county_name) %&gt;% 
+  summarise(median_rate = median(prison_pop_per1k)) </code></pre>
+<div id="exploration" class="section level3">
+<h3>Exploration</h3>
+<p>Let’s start with the prison population.</p>
+<pre class="r"><code># Let&#39;s Explore the different variables
+
+prison_population %&gt;% group_by(pop_category_group) %&gt;% count()</code></pre>
+<pre><code>## # A tibble: 3 x 2
+## # Groups:   pop_category_group [3]
+##   pop_category_group      n
+##   &lt;chr&gt;               &lt;int&gt;
+## 1 Ethnicity          885198
+## 2 Gender             295066
+## 3 Total              147533</code></pre>
+</div>
+</div>
+</div>
+<div id="data-validation" class="section level1">
+<h1>Data Validation</h1>
+<ul>
+<li>Total Population reporting switched from <code>Black, White, Other</code> -&gt; <code>Asian, Black, White, Latino, Native American</code> in 1990
+<ul>
+<li>Based on the dramatic drop in <code>White</code> counts, many <code>Latino</code>, <code>Native American</code>, and `Asian people we’re miscategorized prior to 1990</li>
+</ul></li>
+<li>Prison Populations were reported differently by Ethnicity.
+<ul>
+<li>Prison Populations are recorded between 1983 and 2015</li>
+<li>It appears that <code>Latino</code> was recorded in prison populations starting in 1983</li>
+</ul></li>
+<li><p>Therefore, we should restrict analysis from 1990 to 2015</p></li>
+<li><p>Many States (17) don’t have prison population data for all years in the analysis</p></li>
+</ul>
+<div id="reporting-of-ethnicity-changed-in-1990" class="section level3">
+<h3>Reporting of Ethnicity Changed in 1990</h3>
+<pre class="r"><code>prison_population %&gt;% 
+  #filter(complete.cases(.)) %&gt;% 
+  group_by(pop_category, year) %&gt;% 
+  filter(pop_category_group == &quot;Ethnicity&quot;) %&gt;% 
+  summarise(population = sum(population, na.rm = TRUE),
+            prison_population = sum(prison_population, na.rm = TRUE)) %&gt;% 
+  arrange(year) %&gt;% 
+  ggplot(aes(x = year, y = population, color = pop_category)) + 
+  geom_line() +
+  labs(title = &quot;Population by Ethnicity&quot;,
+       subtitle = &quot;Reporting Changed in 1990&quot;,
+       x = &quot;Year&quot;,
+       y = &quot;Total Population&quot;) +
+  scale_y_continuous(label = scales::comma) +
+  theme_light()</code></pre>
+<p><img src="/blog/2019-01-21-tidytuesday-19-01-22_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<pre class="r"><code>prison_population %&gt;% 
+  #filter(complete.cases(.)) %&gt;% 
+  group_by(pop_category, year) %&gt;% 
+  filter(pop_category_group == &quot;Ethnicity&quot;) %&gt;% 
+  summarise(population = sum(population, na.rm = TRUE),
+            prison_population = sum(prison_population, na.rm = TRUE)) %&gt;% 
+  arrange(year) %&gt;% 
+  ggplot(aes(x = year, y = prison_population, color = pop_category)) + 
+  geom_line() +
+  labs(title = &quot;Prison Population by Ethnicity&quot;,
+       subtitle = &quot;Prison Pop Reporting Covers 1983 to 2015&quot;,
+       x = &quot;Year&quot;,
+       y = &quot;Prison Population&quot;) +
+  scale_y_continuous(label = scales::comma) +
+  theme_light()</code></pre>
+<p><img src="/blog/2019-01-21-tidytuesday-19-01-22_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+</div>
+<div id="some-states-have-spotty-reporting" class="section level3">
+<h3>Some States have Spotty Reporting</h3>
+<pre class="r"><code>low_reporting_states</code></pre>
+<pre><code>## # A tibble: 17 x 2
+##    state data_count
+##    &lt;chr&gt;      &lt;int&gt;
+##  1 AK             0
+##  2 AR             0
+##  3 CT             0
+##  4 DC             0
+##  5 DE             0
+##  6 ID             0
+##  7 KS             0
+##  8 MT             0
+##  9 NM             0
+## 10 RI             0
+## 11 VT             0
+## 12 MA             8
+## 13 LA            10
+## 14 WY            10
+## 15 IN            14
+## 16 AZ            16
+## 17 NV            22</code></pre>
+</div>
+<div id="incarceration-rate-by-state" class="section level3">
+<h3>Incarceration Rate by State</h3>
+<pre class="r"><code>state_prison_pop_median %&gt;% 
+  top_n(10, median_rate) %&gt;% 
+  ggplot(aes(x = forcats::fct_reorder(state, median_rate), y = median_rate)) +
+  geom_point(size = 3) + 
+  geom_linerange(aes(ymin = 0, ymax = median_rate), size = 2) +
+  geom_label(aes(label = round(median_rate, 1)), nudge_y = .5) +
+  labs(title = &quot;Top 10 States by Median Incarceration Rate&quot;,
+       subtitle = &quot;1990 to 2015 | 25 Years | 17 of 50 States Excluded for Missing Data&quot;,
+       x = &quot;State&quot;, y = &quot;Median Incarceration Rate (1990 - 2015)&quot;) +
+  coord_flip() </code></pre>
+<p><img src="/blog/2019-01-21-tidytuesday-19-01-22_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<pre class="r"><code>states %&gt;% 
+  filter(!(abbrev %in% low_reporting_states$state)) %&gt;% 
+  left_join(state_prison_pop_median, by = c(&quot;abbrev&quot; = &quot;state&quot;)) %&gt;% 
+  ggplot() + 
+  geom_polygon(aes(x = long, y = lat, fill = median_rate , group = group), color = &quot;black&quot;) + 
+  scale_fill_continuous(na.value = &quot;#FFFFFF&quot;,low = &quot;white&quot;, high = &quot;darkblue&quot;) +
+  coord_fixed(1.3) +
+  guides(fill=FALSE) +
+  labs(title = &quot;Map of Median Incarceration Rates&quot;,
+       subtitle = &quot;Missing States have no data | Gradiant from Low (Lightest) to High (Darkest)&quot;) +
+  theme_void()# do this to leave off the color legend</code></pre>
+<pre><code>## Warning: Column `abbrev`/`state` joining factor and character vector,
+## coercing into character vector</code></pre>
+<p><img src="/blog/2019-01-21-tidytuesday-19-01-22_files/figure-html/unnamed-chunk-6-2.png" width="672" /></p>
+<pre class="r"><code>filter_county_prison_pop_median &lt;- 
+  county_prison_pop_median %&gt;% 
+  ungroup() %&gt;% 
+  mutate(median_rate_ntile = ntile(median_rate, 1000)) %&gt;% 
+  filter(between(median_rate_ntile, 2,998)) #%&gt;% 
+
+# All Counties
+counties %&gt;% 
+  filter(!(abbrev %in% low_reporting_states$state)) %&gt;% 
+  left_join(filter_county_prison_pop_median, by = c(&quot;abbrev&quot; = &quot;state&quot;, &quot;county_name&quot;)) %&gt;% 
+  ggplot() + 
+  geom_polygon(aes(x = long, y = lat, group = group, fill = median_rate), color = &quot;lightgray&quot;, size = .2)  +
+  geom_polygon(data = states, aes(x = long, y = lat, group = group), color = &quot;black&quot;, alpha = 0, size = .1) + 
+  scale_fill_continuous(na.value = &quot;#FFFFFF&quot;,low = &quot;white&quot;, high = &quot;darkblue&quot;) +
+  coord_fixed(1.3) +
+  guides(fill=FALSE) +
+  labs(title = &quot;Map of Median Incarceration Rates by County&quot;,
+       subtitle = &quot;Missing Counties / States have no data | Gradiant from Low (Lightest) to High (Darkest)&quot;) +
+  coord_map() +
+  theme_void()</code></pre>
+<pre><code>## Warning: Column `abbrev`/`state` joining factor and character vector,
+## coercing into character vector</code></pre>
+<p><img src="/blog/2019-01-21-tidytuesday-19-01-22_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<pre class="r"><code># Top Counties
+counties %&gt;% 
+  filter(!(abbrev %in% low_reporting_states$state)) %&gt;% 
+  left_join(top_n(filter_county_prison_pop_median,500), by = c(&quot;abbrev&quot; = &quot;state&quot;, &quot;county_name&quot;)) %&gt;% 
+  ggplot() + 
+  geom_polygon(aes(x = long, y = lat, group = group, fill = median_rate), color = &quot;lightgray&quot;, size = .2)  +
+  geom_polygon(data = states, aes(x = long, y = lat, group = group), color = &quot;black&quot;, alpha = 0, size = .1) + 
+  scale_fill_continuous(na.value = &quot;#FFFFFF&quot;,low = &quot;white&quot;, high = &quot;darkblue&quot;) +
+  coord_fixed(1.3) +
+  guides(fill=FALSE) +
+  labs(title = &quot;Map of Median Incarceration Rates by County: Top 500&quot;,
+       subtitle = &quot;Missing Counties / States have no data | Gradiant from Low (Lightest) to High (Darkest)&quot;) +
+  coord_map() +
+  theme_void()</code></pre>
+<pre><code>## Selecting by median_rate_ntile</code></pre>
+<pre><code>## Warning: Column `abbrev`/`state` joining factor and character vector,
+## coercing into character vector</code></pre>
+<p><img src="/blog/2019-01-21-tidytuesday-19-01-22_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+</div>
+<div id="data-analysis" class="section level2">
+<h2>Data Analysis</h2>
+</div>
+<div id="conclusions" class="section level2">
+<h2>Conclusions</h2>
+</div>
+</div>
