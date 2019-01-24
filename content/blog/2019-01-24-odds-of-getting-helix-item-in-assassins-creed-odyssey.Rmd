@@ -1,0 +1,173 @@
+---
+title: 'How Long will it take to get Athena Items in Assassins Creed Odyssey '
+author: "Elliot Palmer"
+date: '2019-01-24'
+slug: odds-of-getting-helix-item-in-assassins-creed-odyssey
+tags: []
+categories:
+- random
+- statistics
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+For Christmas, my wife purchased me Assassin's Creed: Odyssey. I've spent roughly 20 hours playing the game making my way through various quests and exploring the large open world. Like most RPG's in this genre, I acquire many different types of gear ranging in rarity, damage and defense through the normal course of play. Legendary items provide the most benefits, but are also the rarest items in the game. There is a short cut to getting more stylish and powerful items: complete special quests for a special in-game currency or pay cold hard cash.
+
+Based on a Reddit post I happened across:
+https://www.reddit.com/r/assassinscreed/comments/aj1e6o/acquiring_helix_items_via_oikos_of_the_olympians/
+
+I thought I would approach his analysis from a statistical perspective.
+
+From the article
+
+>Option 1:
+What if I tried to get it via the weekly selection, how many weeks would I have to wait to get the full set? I need the head, chest, hands, legs, feet, and weapon. That's six items right, so only 6 weeks? WRONG. Considering There are 8 cosmetic packs, with 7 items each, 6 naval packs, 3 items each, 1 Lieutenant pack, 4 items each, 3 more individual lieutenants, and a handful more of Legendary weapons (somewhere around 3-4), that's ~85 items that could be featured. The item that is featured as a weekly selection is all determined at random, so, if I'm pretty unlucky, this could take me 85 weeks to get the Athena set, which is 21 months, or a little over two 2 years. AND items have already repeated in the weekly selection, meaning it could take even LONGER! Could you imagine doing these same dailies and weeklies for two years?(which have already began to repeat as well).
+
+>Alright fine, there is absolutely know what of knowing how long it will take to get a complete set, but you'll get other items along the way, right? Yeah, but you won't get the set bonuses, and the items will look comically goofy when used with other items, as they are highly stylized and don't match well with other items. And you'll still have to play the dailies and weeklies which mostly consist of "Kill 30 guards, sink 20 boats, kill 10 archers". (Fun)
+
+```{r}
+items_in_full_set <- 6 # head, chest, hands, legs, feet, and weapon
+
+special_items <- list(
+  athena_head        = 1,
+  athena_chest       = 1,
+  athena_hands       = 1,
+  athena_legs        = 1,
+  athena_feet        = 1,
+  athena_weapon      = 1,
+  oth_cosmetic_packs = 7 * 7 + 1, # Includes Phobos Skin from Athena Pack
+  naval_packs        = 6 * 3,
+  lieutenant_pack    = 1 * 4,
+  indv_lieutenants   = 1 * 3,
+  legendary_weapons  = 4
+)
+
+total_items <- sum(map_dbl(special_items, ~.))
+
+# Create the data frame to draw from
+list_of_items <- map(names(special_items), ~rep(.,special_items[[.]])) %>% unlist
+```
+
+Now that we have the list of items to draw from, we need to draw until we get all 6 of the Athena items.
+
+```{r, cache=TRUE}
+items_wanted <- c("athena_head", "athena_chest", "athena_hands", "athena_legs", "athena_feet", "athena_weapon")
+
+weeks_to_all_items <- function(item_list, desired_items){
+  drawn_items <- vector()
+  while(sum(desired_items %in% drawn_items) < 6){
+    drawn_item <- sample(item_list, 1, replace = TRUE)
+    drawn_items <- c(drawn_items, drawn_item)
+  }
+  return(length(drawn_items))
+}
+
+weeks_to_athena_items <- map_dbl(1:1000, ~weeks_to_all_items(list_of_items, items_wanted))
+average_weeks <- mean(weeks_to_athena_items)
+```
+
+Average Weeks to Items: `r round(average_weeks, 0)` | Years: `r round(average_weeks / 52, 2)`
+
+Probablility it will take less than 1 year: `r scales::percent(sum(weeks_to_athena_items <= 52) / length(weeks_to_athena_items))`
+
+## Histogram of Results
+```{r}
+ggplot(data.frame(weeks = weeks_to_athena_items), aes(x = weeks)) + 
+  geom_histogram(bins = 50, fill = "purple", color = "black", alpha = .5) + 
+  geom_vline(xintercept = average_weeks) +
+  labs(title = "Distribution of Weeks to Get All 6 Items",
+       subtitle = "Assumes all items have equal probability in any week",
+       x = "Weeks",
+       y = "Count") +
+  theme_light()
+
+```
+
+>Option 2:
+I guess I'll try my luck at the Olympian Gifts
+
+>So starting today, January 23, I am going to use all my future Oraculum on the Olympic Gifts, how will I fair? Well, like I said, we have to make assumptions, and one user did 50 pulls from the gifts, and got 8 legendary items. With that we have about a 1 in 6 chance in getting a Legendary Item. We've been told that these items do not duplicate, so that helps the odds a little bit. Statistically speaking, I may need 510 pulls to get that whole Athena set. Each pull costs 20 Oraculum, so 510 of them is going to cost the player 10,200 Oraculum. I can consistently acquire about 140 oraculum per week if I'm doing all my dailies and weeklies. Unfortunately, it would two 72 weeks to require 10,200 oraculum at a rate of 140 per week. 72 weeks is 18 months, or a year and a half (which is September 2020). Damnit, this could take weeks or months, unless my numbers are way off, or if I get pretty lucky.
+
+```{r, cache = TRUE}
+estimated_probability_of_legendary <- 8 / 50
+
+legendary_item_count <- 8 * 7 + 4 # 8 Cosmetic Packs / 4 Weapons
+
+gifts_per_week <- 7
+
+# So I have a binomial disribution with
+legendary_items <- list_of_items[list_of_items %in% c(items_wanted, "oth_cosmetic_packs", "legendary_weapons")]
+
+olympian_gifts_needed <- function(item_list, desired_items){
+  drawn_items <- vector()
+  while(sum(desired_items %in% drawn_items) < 6){
+    draw_legendary <- rbinom(1, 1, estimated_probability_of_legendary)
+    if(draw_legendary == 1){
+      drawn_item <- sample(item_list, 1, replace = FALSE)
+    } else {
+      drawn_item <- "non_legendary"
+    }
+    drawn_items <- c(drawn_items, drawn_item)
+  }
+  return(length(drawn_items))
+}
+
+giftboxes_to_athena_items <- map_dbl(1:1000, ~olympian_gifts_needed(legendary_items, items_wanted))
+average_weeks_gb <- mean(giftboxes_to_athena_items) / 7
+```
+
+Average Weeks to Items: `r round(average_weeks_gb, 0)` | Years: `r round(average_weeks_gb / 52, 2)`
+
+Probablility it will take less than 1 year: `r scales::percent(sum(giftboxes_to_athena_items / 7 <= 52) / length(giftboxes_to_athena_items))`
+
+## Histogram of Results
+```{r}
+ggplot(data.frame(weeks = giftboxes_to_athena_items / 7), aes(x = weeks)) + 
+  geom_histogram(bins = 50, fill = "purple", color = "black", alpha = .5) + 
+  geom_vline(xintercept = average_weeks_gb) +
+  labs(title = "Distribution of Weeks to Get All 6 Items by Giftboxes",
+       subtitle = "Assumes 8 out of 50 is the correct probability and all legendary items are equally probable",
+       x = "Weeks",
+       y = "Count") +
+  theme_light()
+
+```
+
+## Conclusion
+
+It is significantly more likely that you will achieve all 6 items in less time using option 2 (But it's still FAR too long!!!). At Minimum Wage in the US ($7.25) and assuming 30min per 20 orachulm. You are valuing these items at \$ `r round(7.25 * .5 * mean(giftboxes_to_athena_items),2)`
+
+```{r}
+ggplot(data.frame(weeks = weeks_to_athena_items), aes(x = weeks)) + 
+  geom_histogram(bins = 50, fill = "purple", color = "black", alpha = .5) + 
+  geom_vline(xintercept = average_weeks) +
+  geom_histogram(data = data.frame(weeks = giftboxes_to_athena_items / 7), bins = 50, fill = "blue", color = "black", alpha = .5) + 
+  geom_vline(xintercept = average_weeks_gb, color = "red") +
+  labs(title = "Distribution of Weeks to Get All 6 Items",
+       subtitle = "Assumes all items have equal probability in any week\nOption 1 = Purple, Option 2 = Blue",
+       x = "Weeks",
+       y = "Count") +
+  theme_light()
+
+```
+
+## Bonus
+
+What are the odds that option 2 will be faster than option 1?
+
+```{r}
+trials <- tibble(
+  weeks = sample(weeks_to_athena_items, size = 1000, replace = TRUE),
+  gb_weeks = sample(giftboxes_to_athena_items, size = 1000, replace = TRUE) / 7,
+  variance = weeks - gb_weeks
+)
+
+probability_op1_gt_op2 <- sum(trials$weeks > trials$gb_weeks) / nrow(trials)
+average_variance <- mean(trials$variance)
+```
+
+Probability that option 1 takes longer than option 2: `r probability_op1_gt_op2`
+Average weeks longer option 1 will take vs. option 2: `r average_variance`

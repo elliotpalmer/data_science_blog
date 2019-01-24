@@ -1,0 +1,153 @@
+---
+title: 'How Long will it take to get Athena Items in Assassins Creed Odyssey '
+author: "Elliot Palmer"
+date: '2019-01-24'
+slug: odds-of-getting-helix-item-in-assassins-creed-odyssey
+tags: []
+categories:
+- random
+- statistics
+---
+
+
+
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## ── Attaching packages ──────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
+<pre><code>## ✔ ggplot2 3.0.0     ✔ purrr   0.2.5
+## ✔ tibble  1.4.2     ✔ dplyr   0.7.6
+## ✔ tidyr   0.7.2     ✔ stringr 1.3.1
+## ✔ readr   1.1.1     ✔ forcats 0.2.0</code></pre>
+<pre><code>## ── Conflicts ─────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()</code></pre>
+<p>For Christmas, my wife purchased me Assassin’s Creed: Odyssey. I’ve spent roughly 20 hours playing the game making my way through various quests and exploring the large open world. Like most RPG’s in this genre, I acquire many different types of gear ranging in rarity, damage and defense through the normal course of play. Legendary items provide the most benefits, but are also the rarest items in the game. There is a short cut to getting more stylish and powerful items: complete special quests for a special in-game currency or pay cold hard cash.</p>
+<p>Based on a Reddit post I happened across: <a href="https://www.reddit.com/r/assassinscreed/comments/aj1e6o/acquiring_helix_items_via_oikos_of_the_olympians/" class="uri">https://www.reddit.com/r/assassinscreed/comments/aj1e6o/acquiring_helix_items_via_oikos_of_the_olympians/</a></p>
+<p>I thought I would approach his analysis from a statistical perspective.</p>
+<p>From the article</p>
+<blockquote>
+<p>Option 1: What if I tried to get it via the weekly selection, how many weeks would I have to wait to get the full set? I need the head, chest, hands, legs, feet, and weapon. That’s six items right, so only 6 weeks? WRONG. Considering There are 8 cosmetic packs, with 7 items each, 6 naval packs, 3 items each, 1 Lieutenant pack, 4 items each, 3 more individual lieutenants, and a handful more of Legendary weapons (somewhere around 3-4), that’s ~85 items that could be featured. The item that is featured as a weekly selection is all determined at random, so, if I’m pretty unlucky, this could take me 85 weeks to get the Athena set, which is 21 months, or a little over two 2 years. AND items have already repeated in the weekly selection, meaning it could take even LONGER! Could you imagine doing these same dailies and weeklies for two years?(which have already began to repeat as well).</p>
+</blockquote>
+<blockquote>
+<p>Alright fine, there is absolutely know what of knowing how long it will take to get a complete set, but you’ll get other items along the way, right? Yeah, but you won’t get the set bonuses, and the items will look comically goofy when used with other items, as they are highly stylized and don’t match well with other items. And you’ll still have to play the dailies and weeklies which mostly consist of “Kill 30 guards, sink 20 boats, kill 10 archers”. (Fun)</p>
+</blockquote>
+<pre class="r"><code>items_in_full_set &lt;- 6 # head, chest, hands, legs, feet, and weapon
+
+special_items &lt;- list(
+  athena_head        = 1,
+  athena_chest       = 1,
+  athena_hands       = 1,
+  athena_legs        = 1,
+  athena_feet        = 1,
+  athena_weapon      = 1,
+  oth_cosmetic_packs = 7 * 7 + 1, # Includes Phobos Skin from Athena Pack
+  naval_packs        = 6 * 3,
+  lieutenant_pack    = 1 * 4,
+  indv_lieutenants   = 1 * 3,
+  legendary_weapons  = 4
+)
+
+total_items &lt;- sum(map_dbl(special_items, ~.))
+
+# Create the data frame to draw from
+list_of_items &lt;- map(names(special_items), ~rep(.,special_items[[.]])) %&gt;% unlist</code></pre>
+<p>Now that we have the list of items to draw from, we need to draw until we get all 6 of the Athena items.</p>
+<pre class="r"><code>items_wanted &lt;- c(&quot;athena_head&quot;, &quot;athena_chest&quot;, &quot;athena_hands&quot;, &quot;athena_legs&quot;, &quot;athena_feet&quot;, &quot;athena_weapon&quot;)
+
+weeks_to_all_items &lt;- function(item_list, desired_items){
+  drawn_items &lt;- vector()
+  while(sum(desired_items %in% drawn_items) &lt; 6){
+    drawn_item &lt;- sample(item_list, 1, replace = TRUE)
+    drawn_items &lt;- c(drawn_items, drawn_item)
+  }
+  return(length(drawn_items))
+}
+
+weeks_to_athena_items &lt;- map_dbl(1:1000, ~weeks_to_all_items(list_of_items, items_wanted))
+average_weeks &lt;- mean(weeks_to_athena_items)</code></pre>
+<p>Average Weeks to Items: 212 | Years: 4.08</p>
+<p>Probablility it will take less than 1 year: 0.500%</p>
+<div id="histogram-of-results" class="section level2">
+<h2>Histogram of Results</h2>
+<pre class="r"><code>ggplot(data.frame(weeks = weeks_to_athena_items), aes(x = weeks)) + 
+  geom_histogram(bins = 50, fill = &quot;purple&quot;, color = &quot;black&quot;, alpha = .5) + 
+  geom_vline(xintercept = average_weeks) +
+  labs(title = &quot;Distribution of Weeks to Get All 6 Items&quot;,
+       subtitle = &quot;Assumes all items have equal probability in any week&quot;,
+       x = &quot;Weeks&quot;,
+       y = &quot;Count&quot;) +
+  theme_light()</code></pre>
+<p><img src="/blog/2019-01-24-odds-of-getting-helix-item-in-assassins-creed-odyssey_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<blockquote>
+<p>Option 2: I guess I’ll try my luck at the Olympian Gifts</p>
+</blockquote>
+<blockquote>
+<p>So starting today, January 23, I am going to use all my future Oraculum on the Olympic Gifts, how will I fair? Well, like I said, we have to make assumptions, and one user did 50 pulls from the gifts, and got 8 legendary items. With that we have about a 1 in 6 chance in getting a Legendary Item. We’ve been told that these items do not duplicate, so that helps the odds a little bit. Statistically speaking, I may need 510 pulls to get that whole Athena set. Each pull costs 20 Oraculum, so 510 of them is going to cost the player 10,200 Oraculum. I can consistently acquire about 140 oraculum per week if I’m doing all my dailies and weeklies. Unfortunately, it would two 72 weeks to require 10,200 oraculum at a rate of 140 per week. 72 weeks is 18 months, or a year and a half (which is September 2020). Damnit, this could take weeks or months, unless my numbers are way off, or if I get pretty lucky.</p>
+</blockquote>
+<pre class="r"><code>estimated_probability_of_legendary &lt;- 8 / 50
+
+legendary_item_count &lt;- 8 * 7 + 4 # 8 Cosmetic Packs / 4 Weapons
+
+gifts_per_week &lt;- 7
+
+# So I have a binomial disribution with
+legendary_items &lt;- list_of_items[list_of_items %in% c(items_wanted, &quot;oth_cosmetic_packs&quot;, &quot;legendary_weapons&quot;)]
+
+olympian_gifts_needed &lt;- function(item_list, desired_items){
+  drawn_items &lt;- vector()
+  while(sum(desired_items %in% drawn_items) &lt; 6){
+    draw_legendary &lt;- rbinom(1, 1, estimated_probability_of_legendary)
+    if(draw_legendary == 1){
+      drawn_item &lt;- sample(item_list, 1, replace = FALSE)
+    } else {
+      drawn_item &lt;- &quot;non_legendary&quot;
+    }
+    drawn_items &lt;- c(drawn_items, drawn_item)
+  }
+  return(length(drawn_items))
+}
+
+giftboxes_to_athena_items &lt;- map_dbl(1:1000, ~olympian_gifts_needed(legendary_items, items_wanted))
+average_weeks_gb &lt;- mean(giftboxes_to_athena_items) / 7</code></pre>
+<p>Average Weeks to Items: 131 | Years: 2.52</p>
+<p>Probablility it will take less than 1 year: 6.40%</p>
+</div>
+<div id="histogram-of-results-1" class="section level2">
+<h2>Histogram of Results</h2>
+<pre class="r"><code>ggplot(data.frame(weeks = giftboxes_to_athena_items / 7), aes(x = weeks)) + 
+  geom_histogram(bins = 50, fill = &quot;purple&quot;, color = &quot;black&quot;, alpha = .5) + 
+  geom_vline(xintercept = average_weeks_gb) +
+  labs(title = &quot;Distribution of Weeks to Get All 6 Items by Giftboxes&quot;,
+       subtitle = &quot;Assumes 8 out of 50 is the correct probability and all legendary items are equally probable&quot;,
+       x = &quot;Weeks&quot;,
+       y = &quot;Count&quot;) +
+  theme_light()</code></pre>
+<p><img src="/blog/2019-01-24-odds-of-getting-helix-item-in-assassins-creed-odyssey_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>It is significantly more likely that you will achieve all 6 items in less time using option 2 (But it’s still FAR too long!!!). At Minimum Wage in the US ($7.25) and assuming 30min per 20 orachulm. You are valuing these items at $ 3331.19</p>
+<pre class="r"><code>ggplot(data.frame(weeks = weeks_to_athena_items), aes(x = weeks)) + 
+  geom_histogram(bins = 50, fill = &quot;purple&quot;, color = &quot;black&quot;, alpha = .5) + 
+  geom_vline(xintercept = average_weeks) +
+  geom_histogram(data = data.frame(weeks = giftboxes_to_athena_items / 7), bins = 50, fill = &quot;blue&quot;, color = &quot;black&quot;, alpha = .5) + 
+  geom_vline(xintercept = average_weeks_gb, color = &quot;red&quot;) +
+  labs(title = &quot;Distribution of Weeks to Get All 6 Items&quot;,
+       subtitle = &quot;Assumes all items have equal probability in any week\nOption 1 = Purple, Option 2 = Blue&quot;,
+       x = &quot;Weeks&quot;,
+       y = &quot;Count&quot;) +
+  theme_light()</code></pre>
+<p><img src="/blog/2019-01-24-odds-of-getting-helix-item-in-assassins-creed-odyssey_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+</div>
+<div id="bonus" class="section level2">
+<h2>Bonus</h2>
+<p>What are the odds that option 2 will be faster than option 1?</p>
+<pre class="r"><code>trials &lt;- tibble(
+  weeks = sample(weeks_to_athena_items, size = 1000, replace = TRUE),
+  gb_weeks = sample(giftboxes_to_athena_items, size = 1000, replace = TRUE) / 7,
+  variance = weeks - gb_weeks
+)
+
+probability_op1_gt_op2 &lt;- sum(trials$weeks &gt; trials$gb_weeks) / nrow(trials)
+average_variance &lt;- mean(trials$variance)</code></pre>
+<p>Probability that option 1 takes longer than option 2: 0.772 Average weeks longer option 1 will take vs. option 2: 87.7981429</p>
+</div>
